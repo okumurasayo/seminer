@@ -2,10 +2,170 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>サンプルのドキュメント</title>
+    <meta name="viewport" content="width=600, initial-scale=1.0">
+    <title>逃げろ！ネコ vs イヌ</title>
+    <style>
+        body {
+            background-color: #f5deb3;
+            text-align: center;
+            font-family: Arial, sans-serif;
+        }
+        #game-container, #win-screen, #lose-screen {
+            display: none;
+            position: relative;
+            margin: 20px auto;
+            width: 600px;
+            height: 400px;
+            background-color: #fff;
+            border: 4px solid #008000;
+            text-align: center;
+        }
+        canvas {
+            display: block;
+            background-color: #f0e68c;
+        }
+        #start-screen, #win-screen, #lose-screen {
+            margin-top: 100px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 20px;
+            background-color: #008000;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        button:hover {
+            background-color: #006400;
+        }
+        #win-screen img, #lose-screen img {
+            width: 200px;
+            height: auto;
+        }
+    </style>
 </head>
 <body>
-    GitHub Pagesで見えるかな？
+    <!-- スタート画面 -->
+    <div id="start-screen">
+        <h1>逃げろ！ネコ vs イヌ</h1>
+        <button onclick="startGame()">スタート</button>
+    </div>
+
+    <!-- ゲーム画面 -->
+    <div id="game-container">
+        <canvas id="gameCanvas" width="600" height="400"></canvas>
+        <p id="timer">残り時間: 30秒</p>
+    </div>
+
+    <!-- 勝利画面 -->
+    <div id="win-screen">
+        <h1>勝ち！🎉</h1>
+        <img src="https://res.cloudinary.com/dq9ypnzdn/image/upload/v1738806504/%E3%81%AD%E3%81%93_rdtekj.png" alt="勝利の猫">
+        <p>おめでとう！犬から逃げ切った！</p>
+        <button onclick="goToStartScreen()">もう一度遊ぶ</button>
+    </div>
+
+    <!-- 敗北画面 -->
+    <div id="lose-screen">
+        <h1>負け！💦</h1>
+        <img src="https://res.cloudinary.com/dq9ypnzdn/image/upload/v1738806505/%E7%8A%AC_cbwfep.png" alt="負けた犬">
+        <p>残念！犬に捕まってしまった…</p>
+        <button onclick="goToStartScreen()">もう一度遊ぶ</button>
+    </div>
+
+    <script>
+        let canvas = document.getElementById("gameCanvas");
+        let ctx = canvas.getContext("2d");
+        let gameInterval, speedInterval, countdownInterval;
+        let gameTime;
+        let cat, dog;
+        let keys = {};
+
+        // 画像の読み込み
+        let catImg = new Image();
+        let dogImg = new Image();
+        catImg.src = "https://res.cloudinary.com/dq9ypnzdn/image/upload/v1738806504/%E3%81%AD%E3%81%93_rdtekj.png";  
+        dogImg.src = "https://res.cloudinary.com/dq9ypnzdn/image/upload/v1738806505/%E7%8A%AC_cbwfep.png";  
+
+        document.addEventListener("keydown", (e) => keys[e.key] = true);
+        document.addEventListener("keyup", (e) => keys[e.key] = false);
+
+        function initializeGame() {
+            // 初期状態にリセット
+            gameTime = 30; // ゲーム時間を 30 秒に変更
+            cat = { x: 50, y: 50, size: 40, speed: 4 };
+            dog = { x: 300, y: 200, size: 50, speed: 2 };
+        }
+
+        function startGame() {
+            initializeGame();
+            document.getElementById("start-screen").style.display = "none";
+            document.getElementById("win-screen").style.display = "none";
+            document.getElementById("lose-screen").style.display = "none";
+            document.getElementById("game-container").style.display = "block";
+
+            gameInterval = setInterval(updateGame, 1000 / 60);
+            speedInterval = setInterval(() => dog.speed += 0.5, 10000); // 10秒ごとに犬の速度アップ
+            countdown();
+        }
+
+        function countdown() {
+            let timerElem = document.getElementById("timer");
+            countdownInterval = setInterval(() => {
+                gameTime--;
+                timerElem.textContent = `残り時間: ${gameTime}秒`;
+                if (gameTime <= 0) {
+                    clearInterval(countdownInterval);
+                    endGame("win");
+                }
+            }, 1000);
+        }
+
+        function updateGame() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            if (keys["ArrowUp"] && cat.y > 0) cat.y -= cat.speed;
+            if (keys["ArrowDown"] && cat.y < canvas.height - cat.size) cat.y += cat.speed;
+            if (keys["ArrowLeft"] && cat.x > 0) cat.x -= cat.speed;
+            if (keys["ArrowRight"] && cat.x < canvas.width - cat.size) cat.x += cat.speed;
+            
+            let dx = cat.x - dog.x;
+            let dy = cat.y - dog.y;
+            let dist = Math.sqrt(dx * dx + dy * dy);
+            
+            if (dist < dog.speed) {
+                endGame("lose");
+                return;
+            }
+            
+            dog.x += (dx / dist) * dog.speed;
+            dog.y += (dy / dist) * dog.speed;
+            
+            ctx.drawImage(catImg, cat.x, cat.y, cat.size, cat.size);
+            ctx.drawImage(dogImg, dog.x, dog.y, dog.size, dog.size);
+        }
+
+        function endGame(result) {
+            clearInterval(gameInterval);
+            clearInterval(speedInterval);
+            clearInterval(countdownInterval);
+            document.getElementById("game-container").style.display = "none";
+            
+            if (result === "win") {
+                document.getElementById("win-screen").style.display = "block";
+            } else {
+                document.getElementById("lose-screen").style.display = "block";
+            }
+        }
+
+        function goToStartScreen() {
+            // すべての画面を非表示にして、スタート画面を表示
+            document.getElementById("game-container").style.display = "none";
+            document.getElementById("win-screen").style.display = "none";
+            document.getElementById("lose-screen").style.display = "none";
+            document.getElementById("start-screen").style.display = "block";
+        }
+    </script>
 </body>
 </html>
